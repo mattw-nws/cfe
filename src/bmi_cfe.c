@@ -1978,6 +1978,10 @@ static int Set_value_at_indices (Bmi *self, const char *name, int * inds, int le
         int num_ordinates_scaled = giuh_get_num_ordinates_scaled(cfe_ptr->num_giuh_ordinates, factor);
         double *scaled = malloc(sizeof(double) * num_ordinates_scaled);
         giuh_scale_ordinates(cfe_ptr->num_giuh_ordinates, cfe_ptr->giuh_ordinates, scaled, factor);
+        free(cfe_ptr->giuh_ordinates);
+        cfe_ptr->giuh_ordinates = scaled;
+        cfe_ptr->num_giuh_ordinates = num_ordinates_scaled;
+
 
         // re-Initialize the runoff queue to empty with the new size...
         cfe_ptr->runoff_queue_m_per_timestep = malloc(sizeof(double) * cfe_ptr->num_giuh_ordinates + 1);
