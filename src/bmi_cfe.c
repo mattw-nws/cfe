@@ -18,14 +18,14 @@
 #define STATE_VAR_NAME_COUNT 92   // must match var_info array size
 
 
-#define PARAM_VAR_NAME_COUNT 17
+#define PARAM_VAR_NAME_COUNT 18
 // NOTE: If you update the params, also update the unit test in ../test/main_unit_test_bmi.c
 static const char *param_var_names[PARAM_VAR_NAME_COUNT] = {
     "maxsmc", "satdk", "slope", "b", "Klf", 
     "Kn", "Cgw", "expon", "max_gw_storage",
     "satpsi","wltsmc","alpha_fc","refkdt",
   "a_Xinanjiang_inflection_point_parameter","b_Xinanjiang_shape_parameter","x_Xinanjiang_shape_parameter",
-    "N_nash"
+    "N_nash","giuh_scale_factor"
 };
 
 static const char *param_var_types[PARAM_VAR_NAME_COUNT] = {
@@ -33,7 +33,7 @@ static const char *param_var_types[PARAM_VAR_NAME_COUNT] = {
     "double", "double", "double", "double",
     "double", "double", "double", "double",
     "double","double","double",
-    "int"
+    "int","double"
 };
 //----------------------------------------------
 // Put variable info into a struct to simplify
@@ -171,6 +171,9 @@ Variable var_info[] = {
         { 91, "soil_layer_depths_m",			 "double", 1},
         { 92, "max_root_zone_layer",                     "int", 1},
 	//--------------------------------------------
+    // GIUH Scaling parameter vars
+    //--------------------------------------------
+    { 92, "giuh_scale_factor",                     "double", 1},
 };
 
 int i = 0;
@@ -1959,6 +1962,30 @@ static int Set_value_at_indices (Bmi *self, const char *name, int * inds, int le
 {
     if (len < 1)
         return BMI_FAILURE;
+
+    // handle "giuh_scale_factor" ahead of other calls because it isn't really a variable (doesn't
+    // get stored anywhere) only modifies an existing piece of configuration...
+    if (strcmp(name, "giuh_scale_factor") == 0 ){
+        cfe_state_struct* cfe_ptr = (cfe_state_struct *) self->data;
+        // Thr runoff queue should be empty--if there's anything in it, then fail.
+        double runoff_queue_contents = 0.0;
+        for(i=0;i<cfe_ptr->num_giuh_ordinates;i++) runoff_queue_contents+=cfe_ptr->runoff_queue_m_per_timestep[i];
+        if(runoff_queue_contents != 0.0)
+            return BMI_FAILURE;
+
+        // Recreate the GIUH ordinates applying the scaling factor...
+        double factor = *((double*)src);
+        int num_ordinates_scaled = giuh_get_num_ordinates_scaled(cfe_ptr->num_giuh_ordinates, factor);
+        double *scaled = malloc(sizeof(double) * num_ordinates_scaled);
+        giuh_scale_ordinates(cfe_ptr->num_giuh_ordinates, cfe_ptr->giuh_ordinates, scaled, factor);
+
+        // re-Initialize the runoff queue to empty with the new size...
+        cfe_ptr->runoff_queue_m_per_timestep = malloc(sizeof(double) * cfe_ptr->num_giuh_ordinates + 1);
+        for (i = 0; i < cfe_ptr->num_giuh_ordinates + 1; i++)
+        cfe_ptr->runoff_queue_m_per_timestep[i] = 0.0;
+
+        return BMI_SUCCESS;
+    }
     
     // Get "adjusted_index" for variable
     int adjusted_index = Get_adjusted_index_for_variable(name);
