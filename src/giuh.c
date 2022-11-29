@@ -79,7 +79,7 @@ extern int giuh_scale_ordinates(int num_giuh_ordinates, double *giuh_ordinates, 
           // e.g. index_f == 2.4 and j == 2, deduct 0.4
           ij_part -= index_f - j;
         }
-        if(j == ubound && index_end_f < num_ordinates_scaled){
+        if(j == ubound && index_end_f < num_giuh_ordinates){
           // e.g. index_f == 2.4, factor == 0.6 (index_end_f == 3.2) and j == 3, deduct 0.8
           ij_part -= (j+1) - (index_end_f);
         }
